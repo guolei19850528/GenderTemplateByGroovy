@@ -60,6 +60,7 @@ def generate(out, className, fields,table) {
   out.println ""
   out.println "// Insert to Database"
   out.println "func (this *$className) Insert() (int64, error) {"
+  out.println "  this.CreateTime = time.Now().Unix()"
   out.println "  ormer := GetOrmer()"
   out.println "  ormer.Using(GetAliasName(\"master\"))"
   out.println "  return ormer.Insert(this)"
