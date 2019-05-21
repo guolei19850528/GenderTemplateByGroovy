@@ -3,8 +3,6 @@ import com.intellij.database.util.Case
 import com.intellij.database.util.DasUtil
 import java.io.*
 import java.text.SimpleDateFormat
-
-
 /*
  * Available context bindings:
  *   SELECTION   Iterable<DasObject>
@@ -14,12 +12,12 @@ import java.text.SimpleDateFormat
 
 packageName = "com.sample;"
 typeMapping = [
-  (~/(?i)int/)                      : "long",
-  (~/(?i)float|double|decimal|real/): "double",
-  (~/(?i)datetime|timestamp/)       : "java.sql.Timestamp",
-  (~/(?i)date/)                     : "java.sql.Date",
-  (~/(?i)time/)                     : "java.sql.Time",
-  (~/(?i)/)                         : "String"
+  (~/(?i)int/)                      : "int64",
+  (~/(?i)float|double|decimal|real/): "float64",
+  (~/(?i)datetime|timestamp/)       : "time.Time",
+  (~/(?i)date/)                     : "time.Time",
+  (~/(?i)time/)                     : "time.Time",
+  (~/(?i)/)                         : "string"
 ]
 
 FILES.chooseDirectoryAndSave("Choose directory", "Choose where to store generated files") { dir ->
@@ -29,102 +27,68 @@ FILES.chooseDirectoryAndSave("Choose directory", "Choose where to store generate
 def generate(table, dir) {
   def className = javaName(table.getName(), true)
   def fields = calcFields(table)
-  new File(dir, className + ".php").withPrintWriter { out -> generate(out, className, fields,table) }
+  new File(dir, className + ".go").withPrintWriter { out -> generate(out, className, fields,table) }
 }
 
-def generate(out, className, fields, table) {
+def generate(out, className, fields,table) {
   //out.println "package $packageName"
   out.println ""
-  out.println "/**"
-  out.println " * @author = 郭磊"
-  out.println " * @date = "+new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())
-  out.println " * @table = ${table.getName()}"
-  out.println " */"
-  out.println "class $className extends ModelBase"
-  out.println "{"
+  out.println " // @author = 郭磊"
+  out.println " // @date = "+new SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new Date())
+  out.println " // @table = ${table.getName()}"
+  out.println "type $className struct{"
+  out.println ""
   fields.each() {
     if (it.annos != "") out.println "  ${it.annos}"
-    out.println "  /**"
-    out.println "   * @field = ${it.cname}"
-    out.println "   * @type = ${it.ctype}"
-    out.println "   * @comment = ${it.comment.toString()}"
-    out.println "   */"
-    out.println "  protected \$${it.cname};"
-    out.println ""
+    out.println "  ${it.name.capitalize()} ${it.type} `orm:\"column(${it.cname});\"` // ${it.comment.toString()}"
   }
   out.println ""
-  fields.each() {
-    out.println ""
-    out.println "  /**"
-    out.println "   * @method = getter"
-    out.println "   * @field = ${it.cname}"
-    out.println "   * @comment = ${it.comment.toString()}"
-    out.println "   */"
-    out.println "  public function get${it.name.capitalize()}()"
-    out.println "  {"
-    out.println "    return \$this->\$${it.cname};"
-    out.println "  }"
-    out.println ""
-    out.println "  /**"
-    out.println "   * @method = setter"
-    out.println "   * @field = ${it.cname}"
-    out.println "   * @comment = ${it.comment.toString()}"
-    out.println "   */"
-    out.println "  public function set${it.name.capitalize()}(\$${it.cname})"
-    out.println "  {"
-    out.println "    \$this->${it.cname} = \$${it.cname};"
-    out.println "    return \$this;"
-    out.println "  }"
-    out.println ""
-  }
-
-  out.println ""
-  out.println "  /**"
-  out.println "   * @method = initialize"
-  out.println "   */"
-  out.println "  public function initialize()"
-  out.println "  {"
-  out.println "    \$this->setSource(\"${table.getName()}\");"
-  out.println "    parent::initialize();"
-  out.println "  }"
-  out.println ""
-  out.println "  /**"
-  out.println "   * @method = getSource"
-  out.println "   */"
-  out.println "  public function getSource()"
-  out.println "  {"
-  out.println "    return \"${table.getName()}\";"
-  out.println "  }"
-  out.println ""
-  out.println "  /**"
-  out.println "   * @method = find"
-  out.println "   */"
-  out.println "  public static function find(\$parameters = null)"
-  out.println "  {"
-  out.println "    return parent::find(\$parameters);"
-  out.println "  }"
-  out.println ""
-  out.println "  /**"
-  out.println "   * @method = findFirst"
-  out.println "   */"
-  out.println "  public static function findFirst(\$parameters = null)"
-  out.println "  {"
-  out.println "    return parent::findFirst(\$parameters);"
-  out.println "  }"
-  out.println ""
-  out.println "  /**"
-  out.println "   * @method = columnMap"
-  out.println "   */"
-  out.println "  public function columnMap()"
-  out.println "  {"
-  out.println "    return ["
-  fields.each() {
-    out.println "        \"${it.cname}\" => \"${it.cname}\","
-  }
-  out.println "    ];"
-  out.println "  }"
-
   out.println "}"
+  out.println ""
+  out.println "// setter table name"
+  out.println "func (this *$className) TableName() string {"
+  out.println "  return \"${table.getName()}\""
+  out.println "}"
+  out.println ""
+  out.println "// find first by custom columns"
+  out.println "func (this *$className) FindFirstByColumns(columns ...string) (*$className, error) {"
+  out.println "  ormer := GetOrmer()"
+  out.println "  ormer.Using(GetAliasName(\"slaver\"))"
+  out.println "  err := ormer.Read(this, columns...)"
+  out.println "  return this, err"
+  out.println "}"
+  out.println ""
+  out.println "// Insert to Database"
+  out.println "func (this *$className) Insert() (int64, error) {"
+  out.println "  ormer := GetOrmer()"
+  out.println "  ormer.Using(GetAliasName(\"master\"))"
+  out.println "  return ormer.Insert(this)"
+  out.println "}"
+  out.println ""
+  out.println "// Update to Database"
+  out.println "func (this *$className) Modify(columns ...string) (int64, error) {"
+  out.println "  this.LastModifyTime = time.Now().Unix()"
+  out.println "  ormer := GetOrmer()"
+  out.println "  ormer.Using(GetAliasName(\"master\"))"
+  out.println "  return ormer.Update(this, columns...)"
+  out.println "}"
+  out.println ""
+  out.println "// Soft Delete to Database"
+  out.println "func (this *$className) Remove() (int64, error) {"
+  out.println "  this.RemoveFlag = 1"
+  out.println "  this.RemoveTime = time.Now().Unix()"
+  out.println "  ormer := GetOrmer()"
+  out.println "  ormer.Using(GetAliasName(\"master\"))"
+  out.println "  return ormer.Delete(this)"
+  out.println "}"
+  out.println ""
+  out.println "// Delete to Database"
+  out.println "func (this *$className) Delete() (int64, error) {"
+  out.println "  ormer := GetOrmer()"
+  out.println "  ormer.Using(GetAliasName(\"master\"))"
+  out.println "  return ormer.Delete(this)"
+  out.println "}"
+  out.println ""
 }
 
 def calcFields(table) {
@@ -133,10 +97,14 @@ def calcFields(table) {
     def typeStr = typeMapping.find { p, t -> p.matcher(spec).find() }.value
     fields += [[
                  name : javaName(col.getName(), false),
+                 type : typeStr,
+                 name : javaName(col.getName(), false),
                  cname: col.getName(),
                  ctype: col.getDataType(),
                  type : typeStr,
                  comment: col.getComment(),
+                 defaultValue: col.getDefault(),
+                 primary: DasUtil.isPrimary(col),
                  annos: ""]]
   }
 }
