@@ -75,7 +75,7 @@ def generate(out, className, fields,table) {
   out.println "// Update Custom Columns to Database"
   out.println "func (this *$className) ModifyOfColumns(columns ...string) (int64, error) {"
   out.println "  this.LastModifyTime = time.Now().Unix()"
-  out.println "  columns = append(columns, "LastModifyTime")"
+  out.println "  columns = append(columns, \"LastModifyTime\")"
   out.println "  ormer := GetOrmer()"
   out.println "  ormer.Using(GetAliasName(\"master\"))"
   out.println "  return ormer.Update(this, columns...)"
