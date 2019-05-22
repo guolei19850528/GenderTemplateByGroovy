@@ -89,7 +89,7 @@ def generate(out, className, fields,table) {
   out.println "  this.RemoveTime = time.Now().Unix()"
   out.println "  ormer := GetOrmer()"
   out.println "  ormer.Using(GetAliasName(\"master\"))"
-  out.println "  return ormer.Delete(this)"
+  out.println "  return ormer.Update(this,\"RemoveFlag\",\"RemoveTime\")"
   out.println "}"
   out.println ""
   out.println "// Delete to Database"
