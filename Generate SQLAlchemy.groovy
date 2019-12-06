@@ -62,7 +62,6 @@ def generate(out, className, fields, table) {
     out.println "\tfield = ${it.cname}"
     out.println "\ttype = ${it.ctype}"
     out.println "\tcomment = ${it.comment.toString()}"
-    out.println "\treturn = this"
     out.println "\t\"\"\""
     out.println "\t${it.cname} = Column(\"${it.cname}\", ${it.type})"
     out.println ""
